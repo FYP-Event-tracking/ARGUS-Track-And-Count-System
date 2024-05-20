@@ -1,0 +1,9 @@
+version: '3.9'
+
+services:
+  track_count_system:
+    container_name: track-count-system
+    build:
+      context: .
+    ports:
+      - 8003:8003
