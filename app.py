@@ -45,6 +45,6 @@ def log_received_data(data):
         logging.info(f"LogId: {log_id}, BoxId: {box_id}, ItemType: {item_type}, UserId: {user_id}, StartTime: {start_time}")
 
 if __name__ == "__main__":
-    start_server = websockets.serve(handler, "localhost", 8009)
+    start_server = websockets.serve(handler, host='0.0.0.0', port=8009)
     asyncio.get_event_loop().run_until_complete(start_server)
     asyncio.get_event_loop().run_forever()
