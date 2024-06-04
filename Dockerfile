@@ -12,6 +12,6 @@ RUN pip install -r requirements.txt
 
 COPY . .
 
-EXPOSE 8003
+EXPOSE 8009
 
 CMD ["python", "app.py"]
