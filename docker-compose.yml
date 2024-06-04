@@ -6,4 +6,4 @@ services:
     build:
       context: .
     ports:
-      - 8003:8003
+      - 8009:8009
