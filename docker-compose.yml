@@ -6,4 +6,6 @@ services:
     build:
       context: .
     ports:
-      - 8009:8009
+      - "8009:8009"
+    environment:
+      - PYTHONUNBUFFERED=1
