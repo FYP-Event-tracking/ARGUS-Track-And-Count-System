@@ -6,6 +6,7 @@ import logging
 import requests
 import json
 import datetime
+import pytz
 
 app = Flask(__name__)
 CORS(app) 
@@ -20,6 +21,8 @@ item_type = None
 user_id = None
 start_time = None
 logs = []
+
+IST = pytz.timezone('Asia/Kolkata')
 
 async def handler(websocket, path):
     global log_id, box_id, item_type, user_id, start_time, logs
@@ -79,7 +82,7 @@ def get_data(data):
     
 def log_info():
     global log_id, box_id, item_type, user_id
-    log_time = datetime.datetime.now().isoformat()
+    log_time = datetime.datetime.now(IST).isoformat()
     logging.info(f"LogId: {log_id}, BoxId: {box_id}, ItemType: {item_type}, UserId: {user_id}, LogTime: {log_time}")
 
     log = f"LogId: {log_id}, BoxId: {box_id}, ItemType: {item_type}, UserId: {user_id}, LogTime: {log_time}"
