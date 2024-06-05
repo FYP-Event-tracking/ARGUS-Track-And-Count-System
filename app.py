@@ -24,18 +24,22 @@ logs = []
 async def handler(websocket, path):
     global log_id, box_id, item_type, user_id, start_time, logs
     clients.add(websocket)
-    initial_data = await websocket.recv()
-    get_data(initial_data)
     try:
+        initial_data = await websocket.recv()
+        get_data(initial_data)
         while True:
-            data = await websocket.recv()
-            log_info()
+            try:
+                data = await websocket.recv()
+                log_info()
+            except:
+                logging.info("Client disconnected")
+                break
     finally:
         clients.remove(websocket)
         send_data_to_backend()
+        await websocket.close()
 
 def send_data_to_backend():
-    logging.info("Sending data to backend")
     global log_id, box_id, item_type, user_id, start_time, logs
     logs_str = " ".join(logs)
 
@@ -49,11 +53,11 @@ def send_data_to_backend():
         "totalCount": 0,
         "startTime": start_time,
         "endTime": end_time,
-        "fullLogFile": logs_str 
+        "fullLogFile": logs_str
     }
 
     try:
-        response = requests.post("http://localhost:8007/log/api/Log", json=payload)
+        response = requests.post("http://host.docker.internal:8007/log/api/Log", json=payload)
         response.raise_for_status()
         logging.info(f"Successfully sent data to endpoint: {response.status_code}")
     except requests.exceptions.RequestException as e:
@@ -71,9 +75,8 @@ def get_data(data):
             item_type = line.split(":")[1]
         elif line.startswith("UserId:"):
             user_id = line.split(":")[1]
-        elif line.startswith("StartTime:"):
-            start_time = line.split(":")[1]
-
+    start_time = datetime.datetime.now().isoformat()
+    
 def log_info():
     global log_id, box_id, item_type, user_id
     log_time = datetime.datetime.now().isoformat()

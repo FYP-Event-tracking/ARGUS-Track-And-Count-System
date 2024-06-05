@@ -14,4 +14,6 @@ COPY . .
 
 EXPOSE 8009
 
+ENV PYTHONUNBUFFERED=1
+
 CMD ["python", "app.py"]
