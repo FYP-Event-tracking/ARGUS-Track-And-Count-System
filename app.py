@@ -7,6 +7,13 @@ import requests
 import json
 import datetime
 import pytz
+import numpy as np
+import supervision as sv
+from ultralytics import YOLO
+import os
+import glob
+import base64
+import cv2
 
 app = Flask(__name__)
 CORS(app) 
@@ -20,12 +27,65 @@ box_id = None
 item_type = None
 user_id = None
 start_time = None
+image_data = None
+frame = None
 logs = []
 
 IST = pytz.timezone('Asia/Kolkata')
 
+model = YOLO(os.path.relpath("best.pt"))
+model.fuse()
+
+LINE_START = sv.Point(1000, 1000)
+LINE_END = sv.Point(1500, 200)
+
+line_counter = sv.LineZone(start=LINE_START, end=LINE_END)
+
+line_annotator = sv.LineZoneAnnotator(
+    thickness=4, 
+    text_thickness=4, 
+    text_scale=2
+)
+
+box_annotator = sv.BoxAnnotator(
+    thickness=4,
+    text_thickness=4,
+    text_scale=2
+)
+
+in_count = 0
+out_count = 0
+
+def model_run(frame):
+    global in_count,out_count
+    results = model.track(source=frame, tracker='bytetrack.yaml', show=False, agnostic_nms=True, persist=True)
+    
+    for result in results:
+        detections = sv.Detections.from_yolov8(result)
+        if result.boxes.id is not None:
+            detections.tracker_id = result.boxes.id.cpu().numpy().astype(int)
+        labels = [
+            f"{tracker_id} {model.model.names[class_id]} {confidence:0.2f}"
+            for _, confidence, class_id, tracker_id
+            in detections
+        ]
+        line_counter.trigger(detections=detections)
+        line_annotator.annotate(frame=frame, line_counter=line_counter)
+        frame = box_annotator.annotate(
+            scene=frame, 
+            detections=detections,
+            labels=labels
+        )
+        in_count = line_counter.in_count
+        out_count = line_counter.out_count
+        # Print detection classes to console
+        for label in labels:
+            print(label)
+            print(in_count)
+            print(out_count)
+
 async def handler(websocket, path):
-    global log_id, box_id, item_type, user_id, start_time, logs
+    global log_id, box_id, item_type, user_id, start_time, logs,frame
     clients.add(websocket)
     try:
         initial_data = await websocket.recv()
@@ -33,6 +93,7 @@ async def handler(websocket, path):
         while True:
             try:
                 data = await websocket.recv()
+                model_run(frame)
                 log_info()
             except:
                 logging.info("Client disconnected")
@@ -67,7 +128,7 @@ def send_data_to_backend():
         logging.error(f"Error sending data to endpoint: {e}")
 
 def get_data(data):
-    global log_id, box_id, item_type, user_id, start_time
+    global log_id, box_id, item_type, user_id, start_time,frame
     data_lines = data.decode("utf-8").split("\n")
     for line in data_lines:
         if line.startswith("LogId:"):
@@ -78,6 +139,11 @@ def get_data(data):
             item_type = line.split(":")[1]
         elif line.startswith("UserId:"):
             user_id = line.split(":")[1]
+        elif line.startswith("ImageData:"):
+            image_data = line.split(":")[1]
+            image_bytes = base64.b64decode(image_data)
+            np_arr = np.frombuffer(image_bytes, np.uint8)
+            frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
     start_time = datetime.datetime.now().isoformat()
     
 def log_info():
