@@ -29,31 +29,29 @@ logs = []
 
 IST = pytz.timezone('Asia/Kolkata')
 
-model = YOLO(os.path.relpath("best.pt"))
-model.fuse()
-
-LINE_START = sv.Point(1000, 1000)
-LINE_END = sv.Point(1500, 200)
-
-line_counter = sv.LineZone(start=LINE_START, end=LINE_END)
-
-line_annotator = sv.LineZoneAnnotator(
-    thickness=4, 
-    text_thickness=4, 
-    text_scale=2
-)
-
-box_annotator = sv.BoxAnnotator(
-    thickness=4,
-    text_thickness=4,
-    text_scale=2
-)
-
-in_count = 0
-out_count = 0
-
 def model_run(SOURCE_VIDEO_PATH, TARGET_VIDEO_PATH):
-    global in_count,out_count
+    model = YOLO(os.path.relpath("best.pt"))
+    model.fuse()
+
+    LINE_START = sv.Point(1000, 1000)
+    LINE_END = sv.Point(1500, 200)
+
+    line_counter = sv.LineZone(start=LINE_START, end=LINE_END)
+
+    line_annotator = sv.LineZoneAnnotator(
+        thickness=4, 
+        text_thickness=4, 
+        text_scale=2
+    )
+
+    box_annotator = sv.BoxAnnotator(
+        thickness=4,
+        text_thickness=4,
+        text_scale=2
+    )
+
+    in_count = 0
+    out_count = 0
 
     video_info = sv.VideoInfo.from_video_path(SOURCE_VIDEO_PATH)
 
@@ -84,12 +82,16 @@ def model_run(SOURCE_VIDEO_PATH, TARGET_VIDEO_PATH):
             in_count = line_counter.in_count
             out_count = line_counter.out_count
             sink.write_frame(frame)
+            time = datetime.now().isoformat()
+            time_dt = datetime.fromisoformat(time)
+            time_str = time_dt.strftime("%Y-%m-%d %H:%M:%S")
 
-            logs.append(f"{datetime.datetime.now().isoformat()} {in_count} {out_count} {labels}")
+            log = f"{time_str} {in_count} {out_count} {labels}"
+            logs.append(log + "\n")
 
     return in_count, out_count
 
-def send_data_to_backend():
+def send_data_to_backend(in_count):
     global log_id, box_id, item_type, user_id, start_time, logs
     logs_str = " ".join(logs)
 
@@ -100,7 +102,7 @@ def send_data_to_backend():
         "boxId": box_id,
         "itemType": item_type,
         "userId": user_id,
-        "totalCount": 0,
+        "totalCount": in_count,
         "startTime": start_time,
         "endTime": end_time,
         "fullLogFile": logs_str
@@ -141,6 +143,7 @@ def upload_file():
         source_video_path = os.path.join(UPLOAD_FOLDER, filename)
         target_video_path = os.path.join(UPLOAD_FOLDER, f"{filename}.output.mp4")
         in_count, out_count = model_run(source_video_path, target_video_path)
+        send_data_to_backend(in_count)
         return jsonify({'message': 'File successfully processed'}), 200
     else:
         print('Invalid file type')
