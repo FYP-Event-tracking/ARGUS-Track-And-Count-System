@@ -78,11 +78,13 @@ def model_run(frame):
         )
         in_count = line_counter.in_count
         out_count = line_counter.out_count
-        # Print detection classes to console
-        for label in labels:
-            print(label)
-            print(in_count)
-            print(out_count)
+        
+        time = datetime.datetime.now().isoformat()
+        time_dt = datetime.datetime.fromisoformat(time)
+        time_str = time_dt.strftime("%Y-%m-%d %H:%M:%S")
+
+        log = f"{time_str}    Current-Count: {in_count}  ->  {labels}"
+        logs.append(log + "\n")
 
 async def handler(websocket, path):
     global log_id, box_id, item_type, user_id, start_time, logs,frame
@@ -94,7 +96,6 @@ async def handler(websocket, path):
             try:
                 data = await websocket.recv()
                 model_run(frame)
-                log_info()
             except:
                 logging.info("Client disconnected")
                 break
@@ -145,14 +146,6 @@ def get_data(data):
             np_arr = np.frombuffer(image_bytes, np.uint8)
             frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
     start_time = datetime.datetime.now().isoformat()
-    
-def log_info():
-    global log_id, box_id, item_type, user_id
-    log_time = datetime.datetime.now(IST).isoformat()
-    logging.info(f"LogId: {log_id}, BoxId: {box_id}, ItemType: {item_type}, UserId: {user_id}, LogTime: {log_time}")
-
-    log = f"LogId: {log_id}, BoxId: {box_id}, ItemType: {item_type}, UserId: {user_id}, LogTime: {log_time}"
-    logs.append(log + "\n")
     
 if __name__ == "__main__":
     start_server = websockets.serve(handler, host='0.0.0.0', port=8009)
