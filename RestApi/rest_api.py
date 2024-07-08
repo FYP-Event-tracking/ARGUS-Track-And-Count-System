@@ -33,8 +33,8 @@ def model_run(SOURCE_VIDEO_PATH, TARGET_VIDEO_PATH):
     model = YOLO(os.path.relpath("best.pt"))
     model.fuse()
 
-    LINE_START = sv.Point(1000, 1000)
-    LINE_END = sv.Point(1500, 200)
+    LINE_START = sv.Point(50, 1000)
+    LINE_END = sv.Point(1000, 100)
 
     line_counter = sv.LineZone(start=LINE_START, end=LINE_END)
 
