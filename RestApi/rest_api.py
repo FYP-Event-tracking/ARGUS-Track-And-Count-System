@@ -33,8 +33,8 @@ def model_run(SOURCE_VIDEO_PATH, TARGET_VIDEO_PATH):
     model = YOLO(os.path.relpath("best.pt"))
     model.fuse()
 
-    LINE_START = sv.Point(1000, 1000)
-    LINE_END = sv.Point(1500, 200)
+    LINE_START = sv.Point(50, 1000)
+    LINE_END = sv.Point(1000, 100)
 
     line_counter = sv.LineZone(start=LINE_START, end=LINE_END)
 
@@ -82,11 +82,11 @@ def model_run(SOURCE_VIDEO_PATH, TARGET_VIDEO_PATH):
             in_count = line_counter.in_count
             out_count = line_counter.out_count
             sink.write_frame(frame)
-            time = datetime.now().isoformat()
-            time_dt = datetime.fromisoformat(time)
+            time = datetime.datetime.now().isoformat()
+            time_dt = datetime.datetime.fromisoformat(time)
             time_str = time_dt.strftime("%Y-%m-%d %H:%M:%S")
 
-            log = f"{time_str} {in_count} {out_count} {labels}"
+            log = f"{time_str}    Current-Count: {in_count}  ->  {labels}"
             logs.append(log + "\n")
 
     return in_count, out_count
@@ -141,7 +141,7 @@ def upload_file():
         filename = file.filename
         file.save(os.path.join(UPLOAD_FOLDER, filename))
         source_video_path = os.path.join(UPLOAD_FOLDER, filename)
-        target_video_path = os.path.join(UPLOAD_FOLDER, f"{filename}.output.mp4")
+        target_video_path = os.path.join(UPLOAD_FOLDER, f"{log_id}.mp4")
         in_count, out_count = model_run(source_video_path, target_video_path)
         send_data_to_backend(in_count)
         return jsonify({'message': 'File successfully processed'}), 200
