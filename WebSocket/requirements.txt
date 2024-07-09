@@ -7,3 +7,5 @@ numpy==1.26.1
 supervision==0.3.0
 ultralytics==8.0.196
 opencv-python-headless==4.8.1.78
+lapx==0.5.5
+dill==0.3.8
