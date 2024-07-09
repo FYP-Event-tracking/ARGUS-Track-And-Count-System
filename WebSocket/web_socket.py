@@ -18,6 +18,10 @@ import cv2
 app = Flask(__name__)
 CORS(app) 
 
+UPLOAD_FOLDER = 'uploads'
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
+    
 logging.basicConfig(level=logging.INFO)
 
 clients = set()
@@ -36,8 +40,8 @@ IST = pytz.timezone('Asia/Kolkata')
 model = YOLO(os.path.relpath("best.pt"))
 model.fuse()
 
-LINE_START = sv.Point(1000, 1000)
-LINE_END = sv.Point(1500, 200)
+LINE_START = sv.Point(150, 1000)
+LINE_END = sv.Point(1100, 100)
 
 line_counter = sv.LineZone(start=LINE_START, end=LINE_END)
 
@@ -56,10 +60,28 @@ box_annotator = sv.BoxAnnotator(
 in_count = 0
 out_count = 0
 
+video_writer = None
+
+def initialize_video_writer(frame):
+    global video_writer, log_id
+    height, width, _ = frame.shape
+    video_writer = cv2.VideoWriter(f"{UPLOAD_FOLDER}\{log_id}.mp4", cv2.VideoWriter_fourcc(*'mp4v'), 30, (width, height))
+
+def save_frame_to_video(frame):
+    global video_writer
+    if video_writer is not None:
+        video_writer.write(frame)
+
 def model_run(frame):
-    global in_count,out_count
-    results = model.track(source=frame, tracker='bytetrack.yaml', show=False, agnostic_nms=True, persist=True)
+    global in_count,out_count,video_writer
+
+    frame = cv2.resize(frame, (1920, 1080))
     
+    if video_writer is None:        
+        initialize_video_writer(frame)
+
+    results = model.track(source=frame, tracker='bytetrack.yaml', show=False, agnostic_nms=True, persist=True)
+
     for result in results:
         detections = sv.Detections.from_yolov8(result)
         if result.boxes.id is not None:
@@ -76,6 +98,8 @@ def model_run(frame):
             detections=detections,
             labels=labels
         )
+        save_frame_to_video(frame)
+
         in_count = line_counter.in_count
         out_count = line_counter.out_count
         
@@ -87,7 +111,7 @@ def model_run(frame):
         logs.append(log + "\n")
 
 async def handler(websocket, path):
-    global log_id, box_id, item_type, user_id, start_time, logs,frame
+    global log_id, box_id, item_type, user_id, start_time, logs,frame, video_writer
     clients.add(websocket)
     try:
         initial_data = await websocket.recv()
@@ -103,6 +127,10 @@ async def handler(websocket, path):
         clients.remove(websocket)
         send_data_to_backend()
         await websocket.close()
+
+        if video_writer is not None:
+            video_writer.release()
+            video_writer = None
 
 def send_data_to_backend():
     global log_id, box_id, item_type, user_id, start_time, logs
